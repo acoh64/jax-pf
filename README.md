@@ -1,6 +1,8 @@
 # JAX-PF
 ## Differentiable pattern forming simulations with finite difference and pseudospectral methods implemented in jax.
 
+https://github.com/acoh64/jax-pf/assets/30537480/d5d5b240-c33f-4e45-a5f3-c06ecfc0f939
+
 Inspiration from:
 - [JAX-CFD](https://github.com/google/jax-cfd)
 - [Diffrax](https://github.com/patrick-kidger/diffrax)
