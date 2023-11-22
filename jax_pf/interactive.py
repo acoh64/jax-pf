@@ -7,8 +7,12 @@ import jax.numpy as jnp
 from typing import Callable, Tuple
 
 from IPython.display import HTML, Image, display, Javascript
-from google.colab.output import eval_js
+#from google.colab.output import eval_js
+from js2py import eval_js
 from base64 import b64decode, b64encode
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 from datetime import datetime
 
