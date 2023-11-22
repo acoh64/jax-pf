@@ -3,9 +3,9 @@ import jax.numpy as jnp
 from typing import TypeVar, Callable, Any
 import dataclasses
 
-import domains
-import fftutils
-import functions
+from jax_pf import domains
+from jax_pf import fftutils
+from jax_pf import functions
 
 State = TypeVar("State")
 
@@ -97,8 +97,8 @@ class CahnHilliard2DIMEX(ImplicitExplicitODE):
         self.two_pi_i_kx_2 = (2j * jnp.pi * self.kx)**2
         self.two_pi_i_ky_2 = (2j * jnp.pi * self.ky)**2
         self.two_pi_i_k_4 = (self.two_pi_i_kx_2 + self.two_pi_i_ky_2)**2
-        self.fft = funcutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
         
     def explicit_terms(self, state_hat, t):
         state = self.ifft(state_hat)
@@ -123,8 +123,8 @@ class CahnHilliard2DHatEX(ExplicitODE):
         self.two_pi_i_kx_2 = (2j * jnp.pi * self.kx)**2
         self.two_pi_i_ky_2 = (2j * jnp.pi * self.ky)**2
         self.two_pi_i_k_4 = (self.two_pi_i_kx_2 + self.two_pi_i_ky_2)**2
-        self.fft = funcutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
         
     def explicit_terms(self, state_hat, t):
         state = self.ifft(state_hat)
@@ -144,8 +144,8 @@ class CahnHilliard2DEXNN(ExplicitODE):
         self.two_pi_i_kx_2 = (2j * jnp.pi * self.kx)**2
         self.two_pi_i_ky_2 = (2j * jnp.pi * self.ky)**2
         self.two_pi_i_k_4 = (self.two_pi_i_kx_2 + self.two_pi_i_ky_2)**2
-        self.fft = funcutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
         
     def explicit_terms(self, state_hat, t):
         state = self.ifft(state_hat)
@@ -166,8 +166,8 @@ class CahnHilliard3DIMEX(ImplicitExplicitODE):
         self.two_pi_i_kz_2 = (2j * jnp.pi * self.kz)**2
         self.two_pi_i_k_2 = self.two_pi_i_kx_2 + self.two_pi_i_ky_2 + self.two_pi_i_kz_2
         self.two_pi_i_k_4 = (self.two_pi_i_k_2)**2
-        self.fft = funcutils.truncated_fft_2x_3D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_3D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_3D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_3D if self.smooth else jnp.fft.ifftn
         
     def explicit_terms(self, state_hat):
         state = self.ifft(state_hat)
@@ -199,8 +199,8 @@ class CahnHilliard3DEX(ExplicitODE):
         self.two_pi_i_kz_2 = (self.two_pi_i_kz)**2
         self.two_pi_i_k_2 = self.two_pi_i_kx_2 + self.two_pi_i_ky_2 + self.two_pi_i_kz_2
         self.two_pi_i_k_4 = (self.two_pi_i_k_2)**2
-        self.fft = funcutils.truncated_fft_2x_3D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_3D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_3D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_3D if self.smooth else jnp.fft.ifftn
         
     def explicit_terms(self, state_hat, t):
         state = self.ifft(state_hat)
@@ -232,8 +232,8 @@ class CahnHilliard3DEXNN(ExplicitODE):
         self.two_pi_i_kz_2 = (self.two_pi_i_kz)**2
         self.two_pi_i_k_2 = self.two_pi_i_kx_2 + self.two_pi_i_ky_2 + self.two_pi_i_kz_2
         self.two_pi_i_k_4 = (self.two_pi_i_k_2)**2
-        self.fft = funcutils.truncated_fft_2x_3D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_3D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_3D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_3D if self.smooth else jnp.fft.ifftn
         
     def explicit_terms(self, state_hat, t):
         state = self.ifft(state_hat)
@@ -274,8 +274,8 @@ class GPE2DTS(TimeSplittingODE):
         self.two_pi_i_kx_2 = (self.two_pi_i_kx)**2
         self.two_pi_i_ky_2 = (self.two_pi_i_ky)**2
         self.two_pi_i_k_2 = self.two_pi_i_kx_2 + self.two_pi_i_ky_2
-        self.fft = funcutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
         self.xmesh, self.ymesh = self.domain.mesh()
         
     def A_terms(self, state_hat, t):
@@ -300,8 +300,8 @@ class GPE2DTSControl(TimeSplittingODE):
         self.two_pi_i_kx_2 = (self.two_pi_i_kx)**2
         self.two_pi_i_ky_2 = (self.two_pi_i_ky)**2
         self.two_pi_i_k_2 = self.two_pi_i_kx_2 + self.two_pi_i_ky_2
-        self.fft = funcutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
-        self.ifft = funcutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
         self.xmesh, self.ymesh = self.domain.mesh()
         self.control = lambda t: self.lights(t, self.xmesh, self.ymesh)
         
@@ -327,8 +327,8 @@ class GPE2DTSRot(TimeSplittingODE):
         self.two_pi_i_kx_2 = (self.two_pi_i_kx)**2
         self.two_pi_i_ky_2 = (self.two_pi_i_ky)**2
         self.two_pi_i_k_2 = self.two_pi_i_kx_2 + self.two_pi_i_ky_2
-        self.fft = funcutils.truncated_fft_2x if self.smooth else jnp.fft.fft
-        self.ifft = funcutils.padded_ifft_2x if self.smooth else jnp.fft.ifft
+        self.fft = fftutils.truncated_fft_2x if self.smooth else jnp.fft.fft
+        self.ifft = fftutils.padded_ifft_2x if self.smooth else jnp.fft.ifft
         self.xmesh, self.ymesh = self.domain.mesh()
         
     def A_terms(self, state_hat, t):

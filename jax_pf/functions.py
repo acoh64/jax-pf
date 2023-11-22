@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import jax.nn as jnn
 import equinox as eqx
-import flax
 from flax import linen as nn
 
 from typing import Sequence

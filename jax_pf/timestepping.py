@@ -1,4 +1,4 @@
-import equations
+from jax_pf import equations
 from typing import TypeVar, Callable, Sequence
 import jax.numpy as jnp
 
