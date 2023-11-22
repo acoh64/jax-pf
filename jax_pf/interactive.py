@@ -15,25 +15,6 @@ from datetime import datetime
 
 Array = jnp.array
 
-def get_path_function(file_path: str, x_s: float, t_s: float) -> Callable:
-    
-    # Read the CSV file into a DataFrame
-    df = pd.read_csv(file_path, header=None, skiprows=1, names=['timestamp', 'x_position', 'y_position'])
-
-    # Extract time, x, and y as NumPy arrays
-    time_values = df['timestamp'].values / t_s
-    x_values = df['x_position'].values / x_s
-    y_values = df['y_position'].values / x_s
-    
-    # Define a function for linear interpolation
-    def interpolate_coordinates(time_point: float) -> Tuple[float, float]:
-        x_interp = jnp.interp(time_point, time_values, x_values)
-        y_interp = jnp.interp(time_point, time_values, y_values)
-        return x_interp, y_interp
-    
-    return interpolate_coordinates
-
-
 canvas_html = """
 <canvas width=%d height=%d style="background-color: white; border: 1px solid black;"></canvas>
 <button id="finish-button">Finish</button>
@@ -77,6 +58,26 @@ var data = new Promise(resolve => {
 });
 </script>
 """
+
+def get_path_function(file_path: str, x_s: float, t_s: float) -> Callable:
+    
+    # Read the CSV file into a DataFrame
+    df = pd.read_csv(file_path, header=None, skiprows=1, names=['timestamp', 'x_position', 'y_position'])
+
+    # Extract time, x, and y as NumPy arrays
+    time_values = df['timestamp'].values / t_s
+    x_values = df['x_position'].values / x_s
+    y_values = df['y_position'].values / x_s
+    
+    # Define a function for linear interpolation
+    def interpolate_coordinates(time_point: float) -> Tuple[float, float]:
+        x_interp = jnp.interp(time_point, time_values, x_values)
+        y_interp = jnp.interp(time_point, time_values, y_values)
+        return x_interp, y_interp
+    
+    return interpolate_coordinates
+
+
 
 
 def draw_and_save(filename: str, eval_js: Callable, w=400, h=200, line_width=1):
