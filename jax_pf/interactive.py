@@ -78,8 +78,6 @@ def get_path_function(file_path: str, x_s: float, t_s: float) -> Callable:
     return interpolate_coordinates
 
 
-
-
 def draw_and_save(filename: str, eval_js: Callable, w=400, h=200, line_width=1):
 
     print('Use your mouse to draw a path for the light source in the white box. Press finish when done.')
