@@ -7,8 +7,6 @@ import jax.numpy as jnp
 from typing import Callable, Tuple
 
 from IPython.display import HTML, Image, display, Javascript
-#from google.colab.output import eval_js
-from js2py import eval_js
 from base64 import b64decode, b64encode
 
 import matplotlib.pyplot as plt
@@ -82,7 +80,7 @@ var data = new Promise(resolve => {
 """
 
 
-def draw_and_save(filename, w=400, h=200, line_width=1):
+def draw_and_save(filename: str, eval_js: Callable, w=400, h=200, line_width=1):
 
     print('Use your mouse to draw a path for the light source in the white box. Press finish when done.')
 
