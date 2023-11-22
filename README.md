@@ -15,3 +15,5 @@ Many of these models are commonly used in materials science. For example, the Gr
 To create a conda environment, use `conda env create -f environment.yml`
 
 Depending on your CUDA drivers, you may need to install a different version of Jax.
+
+Check out [this interactive Google Colab demo](https://colab.research.google.com/drive/1HxfLtD2CyyooliTC58Y6nrL9osfFvw9y?usp=sharing) to get started.
