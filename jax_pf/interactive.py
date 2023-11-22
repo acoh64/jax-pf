@@ -78,7 +78,7 @@ var data = new Promise(resolve => {
 """
 
 
-def draw_and_save(filename=file_name, w=400, h=200, line_width=1):
+def draw_and_save(filename, w=400, h=200, line_width=1):
 
     print('Use your mouse to draw a path for the light source in the white box. Press finish when done.')
 
