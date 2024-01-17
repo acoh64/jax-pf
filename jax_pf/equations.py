@@ -11,6 +11,8 @@ State = TypeVar("State")
 
 Array = jax.Array
 
+PyTree = Any
+
 class ODE:
     pass
 
@@ -220,7 +222,7 @@ class CahnHilliard3DEXNN(ExplicitODE):
     domain: domains.Domain
     gamma: float
     mu: functions.FlxChemPot
-    D: functions.FlxFuncAbs
+    D: functions.FlxFuncDiff
     params_mu: Any
     params_D: Any
     smooth: bool = True
@@ -344,3 +346,183 @@ class GPE2DTSRot(TimeSplittingODE):
         return -0.5j*((1+self.e)*self.xmesh**2 + (1-self.e)*self.ymesh**2) - self.k*1j*(jnp.abs(state)**2)
 
     
+
+@dataclasses.dataclass
+class Diffusion2DFDDirichlet(ExplicitODE):
+    
+    domain: domains.Domain
+    D: float
+    space: str = "R"
+    
+    def explicit_terms(self, state, t):
+        df_dx, df_dy = jnp.gradient(state, *self.domain.dx, axis=(1,0))
+        d2f_dx2, d2f_dy2 = jnp.gradient(self.D*df_dx, self.domain.dx[0], axis=(1)), jnp.gradient(self.D*df_dy, self.domain.dx[1], axis=(0))
+        return d2f_dx2 + d2f_dy2
+        
+        
+    def dirichlet_bc_x(self, t):
+        return 1.0
+    
+    def dirichlet_bc_y(self, t):
+        return 1.0
+    
+
+@dataclasses.dataclass
+class Diffusion2D(ExplicitODE):
+    
+    domain: domains.Domain
+    D: float
+    smooth: bool = False
+    space: str = "F"
+    
+    def __post_init__(self):
+        self.kx, self.ky = self.domain.fft_mesh()
+        self.two_pi_i_kx = 2j * jnp.pi * self.kx
+        self.two_pi_i_ky = 2j * jnp.pi * self.ky
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+    
+    def explicit_terms(self, state_hat, t):
+        tmpx = self.D * self.two_pi_i_kx * state_hat
+        tmpy = self.D * self.two_pi_i_ky * state_hat
+        
+        return self.two_pi_i_kx * tmpx + self.two_pi_i_ky * tmpy
+    
+    
+@dataclasses.dataclass
+class CahnHilliardPS2DDirichlet(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    mu: Callable
+    bc_x: Callable
+    bc_y: Callable
+    smooth: bool = True
+    space: str = "R"
+    
+    def __post_init__(self):
+        self.kx, self.ky = self.domain.fft_mesh()
+        self.two_pi_i_kx_2 = (2j * jnp.pi * self.kx)**2
+        self.two_pi_i_ky_2 = (2j * jnp.pi * self.ky)**2
+        self.two_pi_i_k_4 = (self.two_pi_i_kx_2 + self.two_pi_i_ky_2)**2
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        
+    def explicit_terms(self, state, t):
+        state_hat = self.fft(state)
+        return self.ifft((self.two_pi_i_kx_2 + self.two_pi_i_ky_2)*self.fft(self.mu(state)) - self.gamma*(self.two_pi_i_k_4)*state_hat).real
+    
+    def dirichlet_bc_x(self, t):
+        return self.bc_x(t)
+    
+    def dirichlet_bc_y(self, t):
+        return self.bc_y(t)
+    
+@dataclasses.dataclass
+class CahnHilliardPS2D(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    mu: Callable
+    smooth: bool = True
+    space: str = "R"
+    
+    def __post_init__(self):
+        self.kx, self.ky = self.domain.fft_mesh()
+        self.two_pi_i_kx_2 = (2j * jnp.pi * self.kx)**2
+        self.two_pi_i_ky_2 = (2j * jnp.pi * self.ky)**2
+        self.two_pi_i_k_4 = (self.two_pi_i_kx_2 + self.two_pi_i_ky_2)**2
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        
+    def explicit_terms(self, state, t):
+        state_hat = self.fft(state)
+        return self.ifft((self.two_pi_i_kx_2 + self.two_pi_i_ky_2)*self.fft(self.mu(state)) - self.gamma*(self.two_pi_i_k_4)*state_hat).real
+    
+@dataclasses.dataclass
+class CahnHilliardFD2D(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    mu: Callable
+    #D: Callable
+    params_mu: PyTree = None
+    #params_D: PyTree
+    space: str = "R"
+    
+    def __post_init__(self):
+        self.gradx = lambda arr: (jnp.roll(arr, -1, axis=1)-jnp.roll(arr, 1, axis=1))/(2*self.domain.dx[0])
+        self.grady = lambda arr: (jnp.roll(arr, -1, axis=0)-jnp.roll(arr, 1, axis=0))/(2*self.domain.dx[1])
+        self.laplacian = lambda arr: (jnp.roll(arr, -1, axis=1)+jnp.roll(arr, 1, axis=1)+jnp.roll(arr, -1, axis=0)+jnp.roll(arr, 1, axis=0)-4*arr)/(self.domain.dx[0]**2)
+        
+    def explicit_terms(self, state, t):
+        mu = self.mu.apply(state, self.params_mu) - self.gamma*self.laplacian(state)
+        return self.laplacian(mu)
+    
+    
+@dataclasses.dataclass
+class CahnHilliardFD2DDirichlet(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    mu: Callable
+    #D: Callable
+    params_mu: PyTree
+    #params_D: PyTree
+    bc_x: Callable
+    bc_y: Callable
+    space: str = "R"
+    
+    def __post_init__(self):
+        self.gradx = lambda arr: (jnp.roll(arr, -1, axis=1)-jnp.roll(arr, 1, axis=1))/(2*self.domain.dx[0])
+        self.grady = lambda arr: (jnp.roll(arr, -1, axis=0)-jnp.roll(arr, 1, axis=0))/(2*self.domain.dx[1])
+        self.laplacian = lambda arr: (jnp.roll(arr, -1, axis=1)+jnp.roll(arr, 1, axis=1)+jnp.roll(arr, -1, axis=0)+jnp.roll(arr, 1, axis=0)-4*arr)/(self.domain.dx[0]**2)
+        
+    def explicit_terms(self, state, t):
+        #mu = self.mu.apply(self.params_mu,state[...,None])[...,0] - self.gamma*self.laplacian(state)
+        mu = self.mu.apply(self.params_mu,state[...,None])[...,0]
+        return self.laplacian(mu)
+    
+    def dirichlet_bc_x(self, t):
+        return self.bc_x(t)
+    
+    def dirichlet_bc_y(self, t):
+        return self.bc_y(t)
+    
+    
+@dataclasses.dataclass
+class CahnHilliardSmoothedBoundary(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    chem_pot: Callable
+    D: Callable
+    space: str = "R"
+    
+    def __post_init__(self):
+        self.psi = self.domain.geometry.smooth
+    
+    def explicit_terms(self, state, t):
+        
+        flux_left = 0.5 * (self.psi[:-2, 1:-1] + self.psi[1:-1, 1:-1]) * (state[1:-1, 1:-1] - state[:-2, 1:-1]) / self.domain.dx[0]
+        flux_right = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[2:, 1:-1]) * (state[2:, 1:-1] - state[1:-1, 1:-1]) / self.domain.dx[0]
+        flux_bottom = 0.5 * (self.psi[1:-1, 0:-2] + self.psi[1:-1, 1:-1]) * (state[1:-1, 1:-1] - state[1:-1, :-2]) / self.domain.dx[1]
+        flux_top = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[1:-1, 2:]) * (state[1:-1, 2:] - state[1:-1, 1:-1]) / self.domain.dx[1]
+        
+        mu = -self.gamma * (((flux_right - flux_left) / self.domain.dx[0] + (flux_top - flux_bottom) / self.domain.dx[1]) / self.psi[1:-1, 1:-1]) + self.chem_pot(0.5 * (state[:-2, 1:-1] + state[1:-1, 1:-1]))
+        
+        mu = jnp.vstack([mu[0, :], mu, mu[-2, :]])
+        mu = jnp.hstack([mu[:, 0], mu, mu[:, -2]])
+        
+        diffusivity = 0.5 * (state[0:-2, 1:-1] + state[1:-1, 1:-1]) * self.D(0.5 * (state[:-2, j] + state[1:-1, 1:-1]))
+        
+        flux_left = 0.5 * (self.psi[0:-2, 1:-1] + self.psi[1:-1, 1:-1]) * diffusivity * (mu[1:-1, 1:-1] - mu[:-2, j]) / self.domain.dx[0]
+        flux_right = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[2:, 1:-1]) * diffusivity * (mu[2:, 1:-1] - mu[1:-1, 1:-1]) / self.domain.dx[0]
+        flux_bottom = 0.5 * (self.psi[1:-1, 0:-2] + self.psi[1:-1, 1:-1]) * diffusivity * (mu[1:-1, 1:-1] - mu[1:-1, :-2]) / self.domain.dx[1]
+        flux_top = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[1:-1, 2:]) * diffusivity * (mu[1:-1, 2:] - mu[1:-1, 1:-1]) / self.domain.dx[1]
+
+        dcdt = ((flux_right - flux_left) / self.domain.dx[0] + (flux_top - flux_bottom) / self.domain.dx[1]) / self.psi[1:-1, 1:-1]
+
+        dcdt = jnp.vstack([dcdt[0, :], dcdt, dcdt[-2, :]])
+        dcdt = jnp.hstack([dcdt[:, 0], dcdt, dcdt[:, -2]])
+        return dcdt

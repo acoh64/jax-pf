@@ -12,6 +12,32 @@ def forward_euler(equation: equations.ExplicitODE, dt: float) -> TimeStepFn:
     
     return step_fn
 
+def forward_euler_dirichlet(equation: equations.ExplicitODE, dt: float) -> TimeStepFn:
+    
+    if len(equation.domain.dx) == 1:
+        def step_fn(u, t):
+            u = u.at[:].add(dt * equation.explicit_terms(u, t))
+            u = u.at[[0,-1]].set(equation.dirichlet_bc_x(t))
+            return u
+        return step_fn
+    elif len(equation.domain.dx) == 2:
+        def step_fn(u, t):
+            u = u.at[:,:].add(dt * equation.explicit_terms(u, t))
+            u = u.at[[0,-1],:].set(equation.dirichlet_bc_x(t))
+            u = u.at[:,[0,-1]].set(equation.dirichlet_bc_y(t))
+            return u
+        return step_fn
+    elif len(equation.domain.dx) == 3:
+        def step_fn(u, t):
+            u = u.at[:,:,:].add(dt * equation.explicit_terms(u, t))
+            u = u.at[[0,-1],:,:].set(equation.dirichlet_bc_x(t))
+            u = u.at[:,[0,-1],:].set(equation.dirichlet_bc_y(t))
+            u = u.at[:,:,[0,-1]].set(equation.dirichlet_bc_z(t))
+            return u
+        return step_fn
+    else:
+        raise NotImplementedError
+
 def runge_kutta_4(equation: equations.ExplicitODE, dt: float) -> TimeStepFn:
     
     def step_fn(u, t):
@@ -22,6 +48,42 @@ def runge_kutta_4(equation: equations.ExplicitODE, dt: float) -> TimeStepFn:
         return u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
     
     return step_fn
+
+def runge_kutta_4_dirichlet(equation: equations.ExplicitODE, dt: float) -> TimeStepFn:
+    
+    if len(equation.domain.dx) == 1:
+        def step_fn(u, t):
+            k1 = equation.explicit_terms(u, t)
+            k2 = equation.explicit_terms(u + dt * k1 / 2, t)
+            k3 = equation.explicit_terms(u + dt * k2 / 2, t)
+            k4 = equation.explicit_terms(u + dt * k3, t)
+            u = u.at[:].add((dt/6)*(k1 + 2*k2 + 2*k3 + k4))
+            u = u.at[[0,-1]].set(equation.dirichlet_bc_x(t))
+            return u
+        return step_fn
+    elif len(equation.domain.dx) == 2:
+        def step_fn(u, t):
+            k1 = equation.explicit_terms(u, t)
+            k2 = equation.explicit_terms(u + dt * k1 / 2, t)
+            k3 = equation.explicit_terms(u + dt * k2 / 2, t)
+            k4 = equation.explicit_terms(u + dt * k3, t)
+            u = u.at[:,:].add((dt/6)*(k1 + 2*k2 + 2*k3 + k4))
+            u = u.at[[0,-1],:].set(equation.dirichlet_bc_x(t))
+            u = u.at[:,[0,-1]].set(equation.dirichlet_bc_y(t))
+            return u
+        return step_fn
+    if len(equation.domain.dx) == 3:
+        def step_fn(u, t):
+            k1 = equation.explicit_terms(u, t)
+            k2 = equation.explicit_terms(u + dt * k1 / 2, t)
+            k3 = equation.explicit_terms(u + dt * k2 / 2, t)
+            k4 = equation.explicit_terms(u + dt * k3, t)
+            u = u.at[:,:,:].add((dt/6)*(k1 + 2*k2 + 2*k3 + k4))
+            u = u.at[[0,-1],:,:].set(equation.dirichlet_bc_x(t))
+            u = u.at[:,[0,-1],:].set(equation.dirichlet_bc_y(t))
+            u = u.at[:,:,[0,-1]].set(equation.dirichlet_bc_z(t))
+            return u
+        return step_fn
 
 def strange_splitting(equation: equations.TimeSplittingODE, dt: float) -> TimeStepFn:
     

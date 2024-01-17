@@ -176,7 +176,10 @@ def set_up_simulation(
     inner_fn = inner_sim(step_fn, dt, save_every, nested_lengths)
     
     if equation.space == "R":
-        return outer_sim(inner_fn, dt, tstart, tfinal, save_at, out_states)
+        def sim_func(u0):
+            _, res = outer_sim(inner_fn, dt, tstart, tfinal, save_at, out_states)(u0)
+            return res
+        return sim_func
     else:
         def sim_func(u0):
             u0_hat = equation.fft(u0)

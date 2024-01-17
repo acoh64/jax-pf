@@ -4,8 +4,10 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
-from typing import Tuple
+from typing import Tuple, Optional
 import dataclasses
+
+from jax_pf import shapes
 
 Array = jax.Array
 
@@ -23,6 +25,7 @@ class Domain:
     points: Tuple[int, ...]
     box: Tuple[Tuple[float, float], ...]
     units: str
+    geometry: Optional[shapes.Shape] = None
     
     def __post_init__(self):
         self.dx = tuple((up_bound - low_bound) / points 
