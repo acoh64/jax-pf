@@ -77,5 +77,8 @@ class Shape:
             # No-flux BC at bottom and top
             field[:, 0] = field[:, 1]
             field[:, -1] = field[:, -2]
-
+    
+        field[field < 0.00001] = 0.00001
+        field[field > 0.99] = 1.0
+        
         return jnp.array(field)

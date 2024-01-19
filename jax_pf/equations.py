@@ -506,23 +506,81 @@ class CahnHilliardSmoothedBoundary(ExplicitODE):
         
         flux_left = 0.5 * (self.psi[:-2, 1:-1] + self.psi[1:-1, 1:-1]) * (state[1:-1, 1:-1] - state[:-2, 1:-1]) / self.domain.dx[0]
         flux_right = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[2:, 1:-1]) * (state[2:, 1:-1] - state[1:-1, 1:-1]) / self.domain.dx[0]
-        flux_bottom = 0.5 * (self.psi[1:-1, 0:-2] + self.psi[1:-1, 1:-1]) * (state[1:-1, 1:-1] - state[1:-1, :-2]) / self.domain.dx[1]
+        flux_bottom = 0.5 * (self.psi[1:-1, :-2] + self.psi[1:-1, 1:-1]) * (state[1:-1, 1:-1] - state[1:-1, :-2]) / self.domain.dx[1]
         flux_top = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[1:-1, 2:]) * (state[1:-1, 2:] - state[1:-1, 1:-1]) / self.domain.dx[1]
         
         mu = -self.gamma * (((flux_right - flux_left) / self.domain.dx[0] + (flux_top - flux_bottom) / self.domain.dx[1]) / self.psi[1:-1, 1:-1]) + self.chem_pot(0.5 * (state[:-2, 1:-1] + state[1:-1, 1:-1]))
         
-        mu = jnp.vstack([mu[0, :], mu, mu[-2, :]])
-        mu = jnp.hstack([mu[:, 0], mu, mu[:, -2]])
+        mu = jnp.vstack([mu[0, :], mu, mu[-3, :]])
+        mu = jnp.hstack([mu[:, [0]], mu, mu[:, [-3]]])
         
-        diffusivity = 0.5 * (state[0:-2, 1:-1] + state[1:-1, 1:-1]) * self.D(0.5 * (state[:-2, j] + state[1:-1, 1:-1]))
+        diffusivity = 0.5 * (state[:-2, 1:-1] + state[1:-1, 1:-1]) * self.D(0.5 * (state[:-2, 1:-1] + state[1:-1, 1:-1]))
         
-        flux_left = 0.5 * (self.psi[0:-2, 1:-1] + self.psi[1:-1, 1:-1]) * diffusivity * (mu[1:-1, 1:-1] - mu[:-2, j]) / self.domain.dx[0]
+        flux_left = 0.5 * (self.psi[:-2, 1:-1] + self.psi[1:-1, 1:-1]) * diffusivity * (mu[1:-1, 1:-1] - mu[:-2, 1:-1]) / self.domain.dx[0]
         flux_right = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[2:, 1:-1]) * diffusivity * (mu[2:, 1:-1] - mu[1:-1, 1:-1]) / self.domain.dx[0]
-        flux_bottom = 0.5 * (self.psi[1:-1, 0:-2] + self.psi[1:-1, 1:-1]) * diffusivity * (mu[1:-1, 1:-1] - mu[1:-1, :-2]) / self.domain.dx[1]
+        flux_bottom = 0.5 * (self.psi[1:-1, :-2] + self.psi[1:-1, 1:-1]) * diffusivity * (mu[1:-1, 1:-1] - mu[1:-1, :-2]) / self.domain.dx[1]
         flux_top = 0.5 * (self.psi[1:-1, 1:-1] + self.psi[1:-1, 2:]) * diffusivity * (mu[1:-1, 2:] - mu[1:-1, 1:-1]) / self.domain.dx[1]
 
         dcdt = ((flux_right - flux_left) / self.domain.dx[0] + (flux_top - flux_bottom) / self.domain.dx[1]) / self.psi[1:-1, 1:-1]
 
-        dcdt = jnp.vstack([dcdt[0, :], dcdt, dcdt[-2, :]])
-        dcdt = jnp.hstack([dcdt[:, 0], dcdt, dcdt[:, -2]])
+        dcdt = jnp.vstack([dcdt[0, :], dcdt, dcdt[-3, :]])
+        dcdt = jnp.hstack([dcdt[:, [0]], dcdt, dcdt[:, [-3]]])
         return dcdt
+    
+    
+@dataclasses.dataclass
+class CahnHilliardSmoothedBoundary2(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    chem_pot: Callable
+    D: Callable
+    space: str = "R"
+    
+    def __post_init__(self):
+        self.psi = self.domain.geometry.smooth
+        self.gradxf = lambda arr: (jnp.roll(arr, -1, axis=1)-arr)/(self.domain.dx[0])
+        self.gradyf = lambda arr: (jnp.roll(arr, -1, axis=0)-arr)/(self.domain.dx[1])
+        self.gradxb = lambda arr: (arr - jnp.roll(arr, 1, axis=1))/(self.domain.dx[0])
+        self.gradyb = lambda arr: (arr - jnp.roll(arr, 1, axis=0))/(self.domain.dx[0])
+        
+    def explicit_terms(self, state, t):
+        tmp1 = self.psi * self.gradxf(state)
+        tmp2 = self.psi * self.gradyf(state)
+        tmp3 = (self.gamma/self.psi) * (self.gradxb(tmp1) + self.gradyb(tmp2))
+        tmp4 = self.chem_pot(state) - tmp3
+        tmp5 = self.gradxf(tmp4)
+        tmp6 = self.gradyf(tmp4)
+        tmp7 = self.psi * self.D(state) * state
+        return (self.gradxb(tmp7 * tmp5) + self.gradyb(tmp7 * tmp6)) / self.psi
+    
+@dataclasses.dataclass
+class CahnHilliardSmoothedBoundary3(ExplicitODE):
+    
+    domain: domains.Domain
+    gamma: float
+    chem_pot: Callable
+    D: Callable
+    space: str = "R"
+    smooth: bool = False
+    
+    def __post_init__(self):
+        self.psi = self.domain.geometry.smooth
+        self.kx, self.ky = self.domain.fft_mesh()
+        self.two_pi_i_kx = 2j * jnp.pi * self.kx
+        self.two_pi_i_ky = 2j * jnp.pi * self.ky
+        self.fft = fftutils.truncated_fft_2x_2D if self.smooth else jnp.fft.fftn
+        self.ifft = fftutils.padded_ifft_2x_2D if self.smooth else jnp.fft.ifftn
+        
+    def explicit_terms(self, state, t):
+        state_hat = self.fft(state)
+        tmp1 = self.psi * self.ifft(self.two_pi_i_kx*state_hat)
+        tmp2 = self.psi * self.ifft(self.two_pi_i_ky*state_hat)
+        tmp1_hat = self.fft(tmp1)
+        tmp2_hat = self.fft(tmp2)
+        tmp3 = (self.gamma/self.psi) * self.ifft(self.two_pi_i_kx*tmp1_hat + self.two_pi_i_ky*tmp2_hat)
+        tmp4_hat = self.fft(self.chem_pot(state) - tmp3)
+        tmp5 = self.ifft(self.two_pi_i_kx*tmp4_hat)
+        tmp6 = self.ifft(self.two_pi_i_ky*tmp4_hat)
+        tmp7 = self.psi * self.D(state) * state
+        return self.ifft(self.two_pi_i_kx*self.fft(tmp7 * tmp5) + self.two_pi_i_ky*self.fft(tmp7 * tmp6)).real / self.psi
